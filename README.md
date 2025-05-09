@@ -44,6 +44,8 @@ You'll build a simple chat interface that allows users to query job and salary i
 - Implement proper TypeScript typing throughout the application
 - Implement server actions where appropriate
 - Do not use a dedicated backend server or database - all data should be stored and retrieved from the JSON files
+  - By dedicated backend server, we mean not setting up separate Node.js, Flask, or other backend services. You are permitted to use Next.js built-in server capabilities.
+  - By dedicated database, we mean not setting up a MongoDB, PostgreSQL, MySQL or similar database system. All data should be stored and retrieved from JSON files.
 - Clean, maintainable code with clear organization
 
 ## Submission
@@ -56,7 +58,7 @@ Please submit:
 
 ## Notes
 
-- You're free to use any NLP approach (vector embeddings, etc.) to enable querying the data
+- You're free to use any NLP approach (vector embeddings, regex, etc.) to enable querying the data
 - Focus on demonstrating your understanding of Next.js patterns, TypeScript, and clean code organization
 - Don't spend too much time on UI aesthetics - functionality is the priority
 - Use JSON files as your database - no need for external data storage
