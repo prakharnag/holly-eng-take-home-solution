@@ -28,43 +28,50 @@ interface Salary {
 
 function findJobByTitle(title: string): JobDescription | undefined {
   const normalizedTitle = title.toLowerCase().trim();
-  console.log("Searching for job with normalized title:", normalizedTitle);
-  console.log("Available jobs:", jobDescriptions.map(job => job.title));
   
-  // First try exact match
-  const exactMatch = jobDescriptions.find(job => 
-    job.title.toLowerCase() === normalizedTitle
-  );
-  if (exactMatch) {
-    console.log("Found exact match:", exactMatch.title);
-    return exactMatch;
-  }
-
-  // Then try partial match
-  const partialMatch = jobDescriptions.find(job => 
-    normalizedTitle.includes(job.title.toLowerCase()) || 
-    job.title.toLowerCase().includes(normalizedTitle)
-  );
-  if (partialMatch) {
-    console.log("Found partial match:", partialMatch.title);
-    return partialMatch;
-  }
-
-  // Third: Fuzzy match using Fuse.js
+  // Create a Fuse instance with more lenient settings
   const fuse = new Fuse(jobDescriptions, {
     keys: ['title'],
-    threshold: 0.3, // lower = more strict, higher = more lenient
+    threshold: 0.4,
+    includeScore: true,
+    minMatchCharLength: 3,
+    shouldSort: true,
+    findAllMatches: true,
+    location: 0,
+    distance: 100,
+    useExtendedSearch: true
   });
-  console.log("fuse", fuse);
 
-  const fuzzyResults = fuse.search(normalizedTitle);
-  if (fuzzyResults.length > 0) {
-    const bestMatch = fuzzyResults[0].item;
-    console.log("Found fuzzy match:", bestMatch.title);
-    return bestMatch;
+  // Try to find matches with the full title
+  const searchResults = fuse.search(normalizedTitle);
+
+  if (searchResults.length > 0) {
+    return searchResults[0].item;
   }
 
-  console.log("No match found for title:", normalizedTitle);
+  // If no match found, try to find partial matches
+  const words = normalizedTitle.split(/\s+/).filter(word => word.length > 3);
+
+  // Try to find jobs that contain any of these words
+  const partialMatches = jobDescriptions.filter(job => {
+    const jobTitleLower = job.title.toLowerCase();
+    return words.some(word => jobTitleLower.includes(word));
+  });
+
+  if (partialMatches.length > 0) {
+    // If we found multiple matches, use Fuse to rank them
+    const fusePartial = new Fuse(partialMatches, {
+      keys: ['title'],
+      threshold: 0.6,
+      includeScore: true
+    });
+
+    const rankedMatches = fusePartial.search(normalizedTitle);
+    if (rankedMatches.length > 0) {
+      return rankedMatches[0].item;
+    }
+  }
+
   return undefined;
 }
 
@@ -73,10 +80,8 @@ function findSalaryByJobCode(jobCode: string): Salary | undefined {
 }
 
 function extractJobTitle(query: string): string {
-  console.log("Original query:", query);
   
   let title = query.toLowerCase();
-  console.log("After lowercase:", title);
 
   // Regex patterns for common phrases to remove
   const phrasePatterns = [
@@ -89,44 +94,35 @@ function extractJobTitle(query: string): string {
   ];
 
   // Remove phrases from the start
+  let previousTitle = title;
   for (const pattern of phrasePatterns) {
     if (pattern.test(title)) {
       title = title.replace(pattern, '').trim();
-      console.log("After removing phrase pattern:", pattern, "Result:", title);
-      break;
+      if (title === previousTitle) {
+        continue;
+      }
+      previousTitle = title;
     }
   }
 
-  // Get unique jurisdictions from job descriptions
-  const jurisdictions = [...new Set(jobDescriptions.map(job => job.jurisdiction.toLowerCase()))];
-  console.log("Found jurisdictions:", jurisdictions);
-
-  // Regex patterns for position-related words and jurisdictions
+  // Regex patterns for position-related words
   const positionPatterns = [
     // Remove position words
     /\b(?:position|job|role|county|department)\b/g,
-    // Remove jurisdiction words and variations
-    ...jurisdictions.map(j => new RegExp(`\\b${j}\\b`, 'g')),
-    ...jurisdictions.map(j => new RegExp(`\\bin\\s+${j}\\b`, 'g')),
-    ...jurisdictions.map(j => new RegExp(`\\b${j}\\s+county\\b`, 'g')),
-    // Remove "san diego" specifically since it's a special case
-    /\bsan\s+diego\b/g,
     // Remove knowledge, skills, abilities
     /\b(?:knowledge|skills|abilities)\b/g
   ];
 
-  // Remove position and jurisdiction related words
+  // Remove position related words
   for (const pattern of positionPatterns) {
     title = title.replace(pattern, '').trim();
-    console.log("After removing position pattern:", pattern, "Result:", title);
   }
 
   // Split into words and remove stop words
   const words = title.split(/\s+/);
-  const customStopWords = ['knowledge', 'skills', 'abilities', 'for', 'in', 'the', 'a', 'an', 'and', 'of', 'what', 'are'];
+  const customStopWords = ['knowledge', 'skills', 'abilities', 'for', 'in', 'the', 'a', 'an', 'and', 'of', 'what', 'are', 'salary'];
   const filteredWords = removeStopwords(words, customStopWords);
   title = filteredWords.join(' ');
-  console.log("After removing stop words:", title);
 
   // Clean up the result
   title = title
@@ -137,34 +133,32 @@ function extractJobTitle(query: string): string {
     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '') // Remove punctuation
     .trim();
 
-  console.log("Final extracted title:", title);
+  
   return title;
 }
 
 async function generateResponse(query: string): Promise<string> {
-  const jobTitle = extractJobTitle(query);
-  const job = findJobByTitle(jobTitle);
-  console.log("query", query);
-  console.log("jobTitle", jobTitle);
-  console.log("job", job);
-  if (!job) {
-    return "I couldn't find information about that job. Please try rephrasing your question or specify the job title more clearly.";
-  }
-
-  const salary = findSalaryByJobCode(job.code);
-  
-  // Prepare job information for the LLM
-  const jobInfo = {
-    title: job.title,
-    jurisdiction: job.jurisdiction,
-    description: job.description,
-    salary: salary ? {
-      grade1: salary["Salary grade 1"],
-      grade2: salary["Salary grade 2"]
-    } : null
-  };
-  console.log("jobInfo", jobInfo);
   try {
+    const jobTitle = extractJobTitle(query);
+    const job = findJobByTitle(jobTitle);
+    
+    if (!job) {
+      return "I couldn't find information about that job. Please try rephrasing your question or specify the job title and jurisdiction more clearly.";
+    }
+
+    const salary = findSalaryByJobCode(job.code);
+    
+    // Prepare job information for the LLM
+    const jobInfo = {
+      title: job.title,
+      jurisdiction: job.jurisdiction,
+      description: job.description,
+      salary: salary ? {
+        grade1: salary["Salary grade 1"],
+        grade2: salary["Salary grade 2"]
+      } : null
+    };
+
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
@@ -175,20 +169,16 @@ async function generateResponse(query: string): Promise<string> {
         jobInfo
       }),
     });
-
-    console.log("API Response status:", response.status);
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API Error response:", errorText);
-      throw new Error(`Failed to get response from LLM: ${errorText}`);
+      throw new Error(`Failed to get response from LLM: ${response.statusText}`);
     }
 
     const data = await response.json();
-    console.log("API Response data:", data);
     return data.response;
   } catch (error) {
-    console.error('Error calling LLM API:', error);
+    // Log error for monitoring but return user-friendly message
+    console.error('Error generating response:', error);
     return "I apologize, but I'm having trouble processing your request right now. Please try again later.";
   }
 }
@@ -202,31 +192,46 @@ export default function Chat() {
     e.preventDefault();
     if (!inputText.trim() || isLoading) return;
 
+    const currentInput = inputText.trim();
+    // Clear input immediately
+    setInputText('');
+    
     // Add human message
-    setMessages(prev => [...prev, { text: inputText, isAI: false }]);
+    setMessages(prev => [...prev, { text: currentInput, isAI: false }]);
     setIsLoading(true);
     
     try {
       // Generate AI response
-      const response = await generateResponse(inputText);
+      const response = await generateResponse(currentInput);
       setMessages(prev => [...prev, { text: response, isAI: true }]);
     } catch (error) {
-      console.error('Error generating response:', error);
+      // Log error for monitoring but show user-friendly message
+      console.error('Error in chat:', error);
       setMessages(prev => [...prev, { 
         text: "I apologize, but I'm having trouble processing your request right now. Please try again later.", 
         isAI: true 
       }]);
     } finally {
       setIsLoading(false);
-      setInputText('');
     }
+  };
+
+  const handleClearChat = () => {
+    setMessages([]);
   };
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-black p-4 shadow-sm">
+      <div className="bg-black p-4 shadow-sm flex justify-between items-center">
         <h1 className="text-xl font-semibold text-white">Job Information Assistant</h1>
+        <button
+          onClick={handleClearChat}
+          className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          disabled={messages.length === 0}
+        >
+          Clear Chat
+        </button>
       </div>
 
       {/* Messages Container */}
@@ -234,23 +239,31 @@ export default function Chat() {
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${message.isAI ? 'justify-start' : 'justify-end'}`}
+            className={`flex ${message.isAI ? 'justify-end' : 'justify-start'}`}
           >
-            <div
-              className={`max-w-[70%] rounded-lg p-3 ${
-                message.isAI
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white text-black'
-              }`}
-            >
-              {message.text}
+            <div className="flex flex-col max-w-[70%]">
+              {message.isAI && (
+                <span className="text-sm text-gray-600 mb-1 ml-2">AI Assistant</span>
+              )}
+              <div
+                className={`rounded-lg p-3 ${
+                  message.isAI
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-black'
+                }`}
+              >
+                {message.text}
+              </div>
             </div>
           </div>
         ))}
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="max-w-[70%] rounded-lg p-3 bg-blue-500 text-white">
-              Thinking...
+          <div className="flex justify-end">
+            <div className="flex flex-col max-w-[70%]">
+              <span className="text-sm text-gray-600 mb-1 ml-2">AI Assistant</span>
+              <div className="rounded-lg p-3 bg-blue-500 text-white">
+                Thinking...
+              </div>
             </div>
           </div>
         )}

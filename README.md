@@ -1,65 +1,220 @@
-# Holly Engineering Take-Home Assignment
+# Job Information Assistant
 
-## Overview
+A Next.js application that provides an interactive chat interface for users to inquire about job positions, descriptions, and compensation information. The application uses natural language processing to understand user queries and provides relevant information from a predefined dataset of job descriptions and salaries.
 
-This take-home assignment is designed to evaluate your technical skills across several areas important to our engineering team. Please spend no more than 2-3 hours on this task. It's completely fine if you don't finish everything - we're more interested in understanding your approach and thought process.
+## Features
 
-## Goals
+- Interactive chat interface for job-related queries
+- Intelligent job title extraction from natural language queries
+- Fuzzy matching for job title recognition
+- Detailed job descriptions and salary information
+- Real-time responses using OpenAI's gpt-4o-mini
+- Clean and modern UI with responsive design
 
-This assignment evaluates your skills in:
+## Technical Approach
 
-1. Data processing
-2. Next.js development
-3. LLM integration
-4. TypeScript
+### 1. Job Title Extraction
+- Utilizes regex patterns to remove common phrases and stop words
+- Implements fuzzy matching using Fuse.js for flexible job title recognition
+- Handles partial matches and variations in job titles
+- Removes jurisdiction and position-related words for cleaner results
 
-## The Challenge
+### 2. Job Information Matching
+- Multi-step matching process:
+  1. Exact match attempt
+  2. Fuzzy match with configurable threshold
+  3. Partial word matching for complex queries
+- Maintains a balance between accuracy and flexibility in matching
 
-You'll build a simple chat interface that allows users to query job and salary information stored in JSON files. Think of it as a basic HR assistant that can answer questions about job descriptions and compensation. The interface doesn't have to be anything fancy.
+### 3. Natural Language Processing
+- Uses OpenAI's gpt-4o-mini for generating natural, conversational responses
+- Provides context-aware answers based on job information
+- Handles various query formats and phrasings
 
-## Requirements
+### 4. Frontend Implementation
+- Built with Next.js 13+ using the App Router
+- React components for the chat interface
+- Tailwind CSS for styling
+- Responsive design for all screen sizes
 
-### 1. Chat Interface (~30 mins)
+### 5. API Implementation
+The application uses Next.js API Routes (Route Handlers) instead of Server Actions for the following reasons:
 
-- Create a dedicated chat page (`/chat`) with a message interface
-- Style the interface so AI messages appear on the right and human messages on the left
-- The UI doesn't need to be elaborate - focus on functionality over aesthetics
+1. **External API Integration**:
+   - Better suited for handling external API calls (OpenAI)
+   - Provides clear separation between client and server code
+   - Easier to manage API keys and sensitive data
 
-![Sample Application](public/sample.png)
+2. **Error Handling**:
+   - Built-in support for HTTP status codes
+   - More granular error control
+   - Better error reporting and monitoring
 
-### 2. LLM Integration (~1 hr 30 mins)
+3. **Future Extensibility**:
+   - Easier to add middleware (rate limiting, authentication)
+   - Better support for API monitoring and logging
+   - More flexible for potential API extensions
 
-- Integrate with an LLM of your choice
-- The LLM should be able to answer questions about the data in your matched dataset
-- **Important**: Your implementation should parse the user's query to identify which specific job they're asking about, and only pass the relevant job information to the LLM - do not pass the entire dataset to the LLM with each request
-- Example queries and responses:
-  - "What are the knowledge, skills, and abilities for the Assistant Sheriff San Diego County position?"
-    - "The Assistant Sheriff in San Diego County should have knowledge of: local law enforcement agencies in San Diego County, local/state/federal laws, law enforcement rules and regulations, community-based policing..."
-  - "What is the salary for the Assistant Chief Probation Officer in San Bernardino?"
-    - "The Assistant Chief Probation Officer in San Bernardino has a salary range from $70.38 to $101.00 per hour (salary grades 1 and 2)."
+4. **Security**:
+   - API keys are only exposed on the server
+   - Better control over request/response headers
+   - Easier to implement security measures
 
-## Technical Requirements
+While Server Actions are great for form submissions and database operations, API Routes provide better control and flexibility for our use case of handling external API calls and managing sensitive data.
 
-- Use Next.js for the application framework
-- Implement proper TypeScript typing throughout the application
-- Implement server actions where appropriate
-- Do not use a dedicated backend server or database - all data should be stored and retrieved from the JSON files
-  - By dedicated backend server, we mean not setting up separate Node.js, Flask, or other backend services. You are permitted to use Next.js built-in server capabilities.
-  - By dedicated database, we mean not setting up a MongoDB, PostgreSQL, MySQL or similar database system. All data should be stored and retrieved from JSON files.
-- Clean, maintainable code with clear organization
+## Prerequisites
 
-## Submission
+- Node.js 18.17.0 or later (required for Next.js 13+)
+- OpenAI API key
 
-Please submit:
+## Installation
 
-1. The complete codebase in a public GitHub repository
-2. Instructions for running the application locally
-3. A brief writeup explaining your approach, technologies used, and any challenges you faced
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd holly-eng-take-home-solution
+```
 
-## Notes
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
 
-- You're free to use any NLP approach (vector embeddings, regex, etc.) to enable querying the data
-- Focus on demonstrating your understanding of Next.js patterns, TypeScript, and clean code organization
-- Don't spend too much time on UI aesthetics - functionality is the priority
-- Use JSON files as your database - no need for external data storage
-- We'll be evaluating how efficiently you process and filter data before sending to the LLM
+3. Create a `.env.local` file in the root directory and add your OpenAI API key:
+```bash
+OPENAI_API_KEY=your_api_key_here
+```
+
+## Running the Application
+
+1. Start the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+2. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Production Build
+
+1. Create a production build:
+```bash
+npm run build
+# or
+yarn build
+```
+
+2. Start the production server:
+```bash
+npm start
+# or
+yarn start
+```
+
+## Project Structure
+
+```
+holly-eng-take-home-solution/
+├── app/
+│   ├── api/
+│   │   └── chat/
+│   │       └── route.ts
+│   ├── chat/
+│   │   └── page.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── data/
+│   ├── job-descriptions.json
+│   └── salaries.json
+├── public/
+├── .env.local
+├── package.json
+└── README.md
+```
+
+## Dependencies
+
+- Next.js 13+
+- React
+- OpenAI
+- Fuse.js (for fuzzy searching)
+- stopword (for text processing)
+
+## Error Handling
+
+The application includes comprehensive error handling:
+- API error handling for OpenAI requests
+- Graceful fallbacks for job title matching
+- User-friendly error messages
+- Production-ready error logging
+
+### User Feedback for Missing Information
+
+When a job title or jurisdiction is not found in our predefined dataset, the system provides friendly and informative responses:
+
+I couldn't find information about that job. Please try rephrasing your question or specify the job title and Jurisdiction more clearly.";
+  
+
+This approach ensures that users:
+- Receive clear feedback when information isn't available
+- Understand why their query might not have returned results
+- Get suggestions for how to modify their query
+- Don't encounter technical error messages
+
+## Test Cases
+
+Here are some example queries to test different scenarios:
+
+1. Basic Job Title Queries:
+   - "What is the salary for Assistant Sheriff?"
+   - "Tell me about the Assistant Chief Probation Officer position"
+   - "What are the skills and abilities for Deputy Sheriff?"
+
+2. Queries with Jurisdictions:
+   - "What is the salary for Assistant Sheriff in San Bernardino?"
+   - "Tell me about the Assistant Chief Probation Officer in San Diego County"
+   - "What are the skills for Deputy Sheriff in Los Angeles?"
+
+3. Queries with Misspellings:
+   - "What is the salary for Assistant Sherif in San Bernanrdino?"
+   - "Tell me about the Assistant Chief Probation Officer in San Deigo"
+   - "What are the skills for Deputy Sherif in Los Angeles?"
+
+4. Complex Queries:
+   - "What are the knowledge, skills, and abilities for the Assistant Sheriff position in San Bernardino County?"
+   - "Tell me about the salary and requirements for Assistant Chief Probation Officer in San Diego"
+   - "What are the skills and abilities needed for Deputy Sheriff in Los Angeles County?"
+
+## Technical Challenges and Solutions
+
+### Job Title Extraction and Jurisdiction Handling
+
+One of the key challenges in this project was handling jurisdiction names in user queries. The initial approach of using static regex patterns and word lists proved insufficient because:
+
+1. Jurisdiction names can often appear in different formats (e.g., "San Bernardino", "San Bernardino County", "Bernardino")
+2. Users might misspell jurisdiction names
+3. Some jurisdiction names contain common words that could be part of the job title
+
+To address these challenges, we implemented a two-step approach:
+
+1. **Title Extraction**:
+   - Remove common phrases and stop words
+   - Clean and normalize the text
+   - Handle various query formats (questions, statements, etc.)
+
+2. **Fuzzy Matching**:
+   - Use Fuse.js for fuzzy string matching
+   - Implement a lenient threshold (0.4) to handle misspellings
+   - Support partial matches for better recall
+   - Rank matches by relevance score
+
+This approach allows the system to:
+- Handle misspelled jurisdiction names
+- Match job titles even when jurisdiction information is present
+- Provide better results for partial matches
+- Maintain accuracy while being flexible with user input
+
