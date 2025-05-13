@@ -1,0 +1,51 @@
+Job Information Assistant - Technical Approach
+===========================================
+
+Project Overview
+---------------
+A Next.js job information assistant that helps users query about job positions 
+and compensation using natural language.
+
+Tech Stack
+----------
+Frontend:
+- Next.js 15.3.1
+- React 19
+- TypeScript
+- Tailwind CSS
+
+Backend:
+- Next.js API Routes
+- OpenAI GPT-4o-mini
+
+Key Libraries:
+- Fuse.js (fuzzy matching)
+- stopword (text processing)
+
+Main Features
+------------
+1. Interactive chat interface
+2. Smart job title extraction
+3. Fuzzy matching for job titles
+4. Natural language processing
+
+Key Challenges & Solutions
+-------------------------
+1. Jurisdiction Handling
+   - Challenge: Different formats and misspellings
+   - Solution: Fuzzy matching with Fuse.js
+
+2. Job Title Extraction
+   - Challenge: Clean extraction from natural language
+   - Solution: Multi-step cleaning with regex and stop words
+
+3. User Experience
+   - Challenge: Clear feedback for missing information
+   - Solution: Friendly error messages and fallbacks
+
+Development Highlights
+--------------------
+- Clean, modern UI
+- Efficient fuzzy matching
+- Type-safe implementation
+- Production-ready error handling
